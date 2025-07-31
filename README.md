@@ -1,5 +1,5 @@
 # NOREL - Non-paper Relay Identity System
-[![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/Ralein/norel-app)
+
 
 NOREL is a comprehensive Next.js application designed to streamline identity sharing and form-filling processes. It provides a secure, "tap-to-fill" solution for modern institutions like banks, hospitals, and public services, reducing the reliance on paper forms. The system allows users to create detailed identity profiles, share them securely via QR codes or NFC, and automatically populate forms at receiving kiosks.
 
