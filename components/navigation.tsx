@@ -167,7 +167,7 @@ export function Navigation() {
                   variant="ghost"
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-accent/50 group",
-                    pathname.startsWith("/form-craft") || pathname.startsWith("/ai-forms")
+                    pathname?.startsWith("/form-craft") || pathname?.startsWith("/ai-forms")
                       ? "text-primary bg-primary/10 shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
                   )}

@@ -10,63 +10,102 @@ import { User, Plus, Search, Edit, Trash2, Calendar, Mail, Phone } from "lucide-
 import Link from "next/link"
 
 interface ProfileData {
-  id: string
-  name: string
-  email: string
-  phone: string
-  dateOfBirth: string
-  address: string
-  city: string
-  state: string
-  zipCode: string
-  country: string
-  createdAt: string
-  lastUsed?: string
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  primaryPhone: string;
+  dateOfBirth: string;
+  permanentAddress: string;
+  permanentCity: string;
+  permanentState: string;
+  permanentZip: string;
+  createdAt: string;
+  lastUsed?: string;
 }
 
 export default function ProfilesPage() {
-  const { toast } = useToast()
-  const [profiles, setProfiles] = useState<ProfileData[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filteredProfiles, setFilteredProfiles] = useState<ProfileData[]>([])
+  const { toast } = useToast();
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProfiles, setFilteredProfiles] = useState<ProfileData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load profiles from localStorage
-    const savedProfiles = localStorage.getItem("norel-profiles")
-    if (savedProfiles) {
-      const parsedProfiles = JSON.parse(savedProfiles)
-      setProfiles(parsedProfiles)
-      setFilteredProfiles(parsedProfiles)
-    }
-  }, [])
+    const fetchProfiles = async () => {
+      try {
+        const res = await fetch('/api/profiles');
+        if (!res.ok) {
+          throw new Error('Failed to fetch profiles');
+        }
+        const data = await res.json();
+        setProfiles(data);
+        setFilteredProfiles(data);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load profiles. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfiles();
+  }, []);
 
   useEffect(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
+    const normalizedSearch = searchTerm.trim().toLowerCase();
 
     const filtered = profiles.filter((profile) => {
-      const name = (profile.name ?? "").toLowerCase()
-      const email = (profile.email ?? "").toLowerCase()
-      const phone = profile.phone ?? ""
+      const fullName = `${profile.firstName} ${profile.lastName}`.toLowerCase();
+      const email = (profile.email ?? "").toLowerCase();
+      const phone = profile.primaryPhone ?? "";
 
-      return name.includes(normalizedSearch) || email.includes(normalizedSearch) || phone.includes(searchTerm)
-    })
+      return fullName.includes(normalizedSearch) || email.includes(normalizedSearch) || phone.includes(searchTerm);
+    });
 
-    setFilteredProfiles(filtered)
-  }, [profiles, searchTerm])
+    setFilteredProfiles(filtered);
+  }, [profiles, searchTerm]);
 
-  const deleteProfile = (profileId: string) => {
-    const updatedProfiles = profiles.filter((p) => p.id !== profileId)
-    setProfiles(updatedProfiles)
-    localStorage.setItem("norel-profiles", JSON.stringify(updatedProfiles))
+  const deleteProfile = async (profileId: string) => {
+    try {
+      const res = await fetch(`/api/profiles/${profileId}`, {
+        method: 'DELETE',
+      });
 
-    toast({
-      title: "Profile Deleted",
-      description: "The profile has been removed successfully.",
-    })
-  }
+      if (!res.ok) {
+        throw new Error('Failed to delete profile');
+      }
+
+      const updatedProfiles = profiles.filter((p) => p.id !== profileId);
+      setProfiles(updatedProfiles);
+      setFilteredProfiles(updatedProfiles);
+
+      toast({
+        title: "Profile Deleted",
+        description: "The profile has been removed successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p>Loading profiles...</p>
+      </div>
+    );
   }
 
   return (
@@ -113,7 +152,7 @@ export default function ProfilesPage() {
                         <User className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{profile.name}</CardTitle>
+                        <CardTitle className="text-lg">{profile.firstName} {profile.lastName}</CardTitle>
                         <CardDescription className="flex items-center gap-1">
                           <Mail className="w-3 h-3" />
                           {profile.email}
@@ -126,7 +165,7 @@ export default function ProfilesPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="w-3 h-3" />
-                      {profile.phone}
+                      {profile.primaryPhone}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="w-3 h-3" />
@@ -136,7 +175,7 @@ export default function ProfilesPage() {
 
                   <div className="text-sm">
                     <p className="text-muted-foreground">
-                      {profile.address}, {profile.city}, {profile.state} {profile.zipCode}
+                      {profile.permanentAddress}, {profile.permanentCity}, {profile.permanentState} {profile.permanentZip}
                     </p>
                   </div>
 
@@ -170,7 +209,7 @@ export default function ProfilesPage() {
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
-              {profiles.length === 0 ? (
+              {profiles.length === 0 && !loading ? (
                 <>
                   <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No Profiles Yet</h3>
@@ -201,5 +240,5 @@ export default function ProfilesPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

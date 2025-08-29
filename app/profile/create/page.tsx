@@ -16,83 +16,90 @@ import Link from "next/link"
 
 interface ProfileFormData {
   // Personal Information
-  firstName: string
-  middleName: string
-  lastName: string
-  nameAsPerID: string
-  dateOfBirth: string
-  age: string
-  gender: string
-  maritalStatus: string
-  nationality: string
-  placeOfBirth: string
-  bloodGroup: string
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  nameAsPerID: string;
+  dateOfBirth: string;
+  age: string;
+  gender: string;
+  maritalStatus: string;
+  nationality: string;
+  placeOfBirth: string;
+  bloodGroup: string;
 
   // Contact & Address
-  permanentAddress: string
-  permanentCity: string
-  permanentState: string
-  permanentZip: string
-  currentAddress: string
-  currentCity: string
-  currentState: string
-  currentZip: string
-  primaryPhone: string
-  alternatePhone: string
-  email: string
-  communicationPreference: string
+  permanentAddress: string;
+  permanentCity: string;
+  permanentState: string;
+  permanentZip: string;
+  currentAddress: string;
+  currentCity: string;
+  currentState: string;
+  currentZip: string;
+  primaryPhone: string;
+  alternatePhone: string;
+  email: string;
+  communicationPreference: string;
 
   // Identity Documents
-  panNumber: string
-  aadhaarNumber: string
-  voterIdNumber: string
-  passportNumber: string
-  governmentIdFile: string
-  photoFile: string
-  signatureFile: string
+  panNumber: string;
+  aadhaarNumber: string;
+  voterIdNumber: string;
+  passportNumber: string;
+  governmentIdFile: string;
+  photoFile: string;
+  signatureFile: string;
 
   // Banking & Financial
-  bankName: string
-  accountNumber: string
-  ifscCode: string
-  creditCardNumber: string
-  cvv: string
-  monthlyIncome: string
-  annualIncome: string
-  incomeTaxPaid: string
-  occupation: string
-  employerName: string
-  employmentType: string
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  creditCardNumber: string;
+  cvv: string;
+  monthlyIncome: string;
+  annualIncome: string;
+  incomeTaxPaid: string;
+  occupation: string;
+  employerName: string;
+  employmentType: string;
 
   // Family & Nominee
-  fatherName: string
-  motherName: string
-  spouseName: string
-  emergencyContactName: string
-  emergencyContactNumber: string
-  nomineeName: string
-  nomineeRelationship: string
-  nomineeDOB: string
+  fatherName: string;
+  motherName: string;
+  spouseName: string;
+  emergencyContactName: string;
+  emergencyContactNumber: string;
+  nomineeName: string;
+  nomineeRelationship: string;
+  nomineeDOB: string;
 
   // Health & Insurance
-  healthInsuranceProvider: string
-  healthPolicyNumber: string
-  medicalHistory: string
-  allergies: string
-  ongoingMedications: string
-  dataConsent: boolean
+  healthInsuranceProvider: string;
+  healthPolicyNumber: string;
+  medicalHistory: string;
+  allergies: string;
+  ongoingMedications: string;
+  dataConsent: boolean;
 
   // Additional Fields
-  educationalQualification: string
-  formCategory: string
-  preferredLanguage: string
-  additionalNotes: string
+  educationalQualification: string;
+  formCategory: string;
+  preferredLanguage: string;
+  additionalNotes: string;
+}
+
+interface FileData {
+  governmentIdFile: File | null;
+  photoFile: File | null;
+  signatureFile: File | null;
 }
 
 export default function CreateProfilePage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [fileData, setFileData] = useState<FileData>({ governmentIdFile: null, photoFile: null, signatureFile: null });
 
   const [formData, setFormData] = useState<ProfileFormData>({
     // Personal Information
@@ -170,12 +177,16 @@ export default function CreateProfilePage() {
   })
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  }
+
+  const handleFileChange = (field: keyof FileData, file: File | null) => {
+    setFileData((prev) => ({ ...prev, [field]: file }));
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
       // Validate required fields
@@ -192,44 +203,61 @@ export default function CreateProfilePage() {
         "permanentCity",
         "permanentState",
         "permanentZip",
-      ]
-      const missingFields = requiredFields.filter((field) => !formData[field as keyof ProfileFormData])
+      ];
+      const missingFields = requiredFields.filter((field) => !formData[field as keyof ProfileFormData]);
 
       if (missingFields.length > 0) {
         toast({
           title: "Missing Information",
           description: `Please fill in: ${missingFields.join(", ")}`,
           variant: "destructive",
-        })
-        return
+        });
+        setIsLoading(false);
+        return;
       }
 
-      // Create profile object
-      const profile = {
-        id: Date.now().toString(),
-        ...formData,
-        createdAt: new Date().toISOString(),
+      const formDataToSend = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) {
+          formDataToSend.append(key, value.toString());
+        }
+      });
+
+      Object.entries(fileData).forEach(([key, value]) => {
+        if (value) {
+          formDataToSend.append(key, value);
+        }
+      });
+
+      const res = await fetch('/api/profiles', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (res.status === 409) {
+        const { message } = await res.json();
+        toast({
+          title: "Email Already Exists",
+          description: message,
+          variant: "destructive",
+        });
+      } else if (!res.ok) {
+        throw new Error('Failed to create profile');
+      } else {
+        toast({
+          title: "Profile Created",
+          description: "Your identity profile has been saved successfully.",
+        });
+        router.push("/");
       }
-
-      // Save to localStorage
-      const existingProfiles = JSON.parse(localStorage.getItem("norel-profiles") || "[]")
-      existingProfiles.push(profile)
-      localStorage.setItem("norel-profiles", JSON.stringify(existingProfiles))
-
-      toast({
-        title: "Profile Created",
-        description: "Your identity profile has been saved successfully.",
-      })
-
-      router.push("/")
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create profile. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -628,10 +656,8 @@ export default function CreateProfilePage() {
                     type="file"
                     accept="image/*,.pdf"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        handleInputChange("governmentIdFile", file.name)
-                      }
+                      const file = e.target.files?.[0];
+                      handleFileChange("governmentIdFile", file || null);
                     }}
                   />
                   <p className="text-xs text-muted-foreground">Upload scan of government ID</p>
@@ -643,10 +669,8 @@ export default function CreateProfilePage() {
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        handleInputChange("photoFile", file.name)
-                      }
+                      const file = e.target.files?.[0];
+                      handleFileChange("photoFile", file || null);
                     }}
                   />
                   <p className="text-xs text-muted-foreground">Passport-sized photo</p>
@@ -658,10 +682,8 @@ export default function CreateProfilePage() {
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        handleInputChange("signatureFile", file.name)
-                      }
+                      const file = e.target.files?.[0];
+                      handleFileChange("signatureFile", file || null);
                     }}
                   />
                   <p className="text-xs text-muted-foreground">Upload signature image</p>

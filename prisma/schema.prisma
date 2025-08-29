@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id                        String    @id @default(cuid())
+  firstName                 String
+  middleName                String?
+  lastName                  String
+  nameAsPerID               String
+  dateOfBirth               String
+  age                       String?
+  gender                    String
+  maritalStatus             String?
+  nationality               String
+  placeOfBirth              String?
+  bloodGroup                String?
+  permanentAddress          String
+  permanentCity             String
+  permanentState            String
+  permanentZip              String
+  currentAddress            String?
+  currentCity               String?
+  currentState              String?
+  currentZip                String?
+  primaryPhone              String
+  alternatePhone            String?
+  email                     String    @unique
+  communicationPreference   String?
+  panNumber                 String?
+  aadhaarNumber             String?
+  voterIdNumber             String?
+  passportNumber            String?
+  governmentIdFile          String?
+  photoFile                 String?
+  signatureFile             String?
+  bankName                  String?
+  accountNumber             String?
+  ifscCode                  String?
+  creditCardNumber          String?
+  cvv                       String?
+  monthlyIncome             String?
+  annualIncome              String?
+  incomeTaxPaid             String?
+  occupation                String?
+  employerName              String?
+  employmentType            String?
+  fatherName                String?
+  motherName                String?
+  spouseName                String?
+  emergencyContactName      String?
+  emergencyContactNumber    String?
+  nomineeName               String?
+  nomineeRelationship       String?
+  nomineeDOB                String?
+
+  // Health & Insurance
+  healthInsuranceProvider   String?
+  healthPolicyNumber        String?
+  medicalHistory            String?
+  allergies                 String?
+  ongoingMedications        String?
+  dataConsent               Boolean?
+
+  // Additional Fields
+  educationalQualification  String?
+  formCategory              String?
+  preferredLanguage         String?
+  additionalNotes           String?
+
+  createdAt                 DateTime  @default(now())
+  shares                    ShareHistory[]
+}
+
+model ShareHistory {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id])
+  timestamp   DateTime @default(now())
+  formType    String
+  location    String
+}

@@ -8,40 +8,58 @@ import { User, Share2, Monitor, FileText, Plus, Clock, Shield } from "lucide-rea
 import Link from "next/link"
 
 interface ProfileData {
-  id: string
-  name: string
-  email: string
-  phone: string
-  dateOfBirth: string
-  address: string
-  createdAt: string
-  lastUsed?: string
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  primaryPhone: string;
+  dateOfBirth: string;
+  permanentAddress: string;
+  permanentCity: string;
+  permanentState: string;
+  permanentZip: string;
+  createdAt: string;
+  lastUsed?: string;
 }
 
 interface ShareHistory {
-  id: string
-  location: string
-  timestamp: string
-  formType: string
+  id: string;
+  profileId: string;
+  timestamp: string;
+  formType: string;
+  location: string;
 }
 
 export default function HomePage() {
-  const [profiles, setProfiles] = useState<ProfileData[]>([])
-  const [shareHistory, setShareHistory] = useState<ShareHistory[]>([])
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [shareHistory, setShareHistory] = useState<ShareHistory[]>([]);
 
   useEffect(() => {
-    // Load profiles from localStorage
-    const savedProfiles = localStorage.getItem("norel-profiles")
-    if (savedProfiles) {
-      setProfiles(JSON.parse(savedProfiles))
-    }
+    const fetchProfilesAndShareHistory = async () => {
+      try {
+        const [profilesRes, shareHistoryRes] = await Promise.all([
+          fetch('/api/profiles'),
+          fetch('/api/share-history'),
+        ]);
 
-    // Load share history
-    const savedHistory = localStorage.getItem("norel-share-history")
-    if (savedHistory) {
-      setShareHistory(JSON.parse(savedHistory))
-    }
-  }, [])
+        if (!profilesRes.ok) {
+          throw new Error('Failed to fetch profiles');
+        }
+        const profilesData = await profilesRes.json();
+        setProfiles(profilesData);
+
+        if (!shareHistoryRes.ok) {
+          throw new Error('Failed to fetch share history');
+        }
+        const shareHistoryData = await shareHistoryRes.json();
+        setShareHistory(shareHistoryData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchProfilesAndShareHistory();
+  }, []);
 
   const stats = {
     totalProfiles: profiles.length,
@@ -173,7 +191,7 @@ export default function HomePage() {
                         <User className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-medium">{profile.name}</h3>
+                        <h3 className="font-medium">{profile.firstName} {profile.lastName}</h3>
                         <p className="text-sm text-muted-foreground">{profile.email}</p>
                       </div>
                     </div>

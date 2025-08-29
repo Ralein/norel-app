@@ -8,15 +8,40 @@ import { Badge } from "@/components/ui/badge"
 import { QRCodeSVG } from "qrcode.react"
 import { Share2, Smartphone, QrCode, Copy, Check, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-// Web NFC is available on some browsers as a global `NDEFReader`
-// This prevents TypeScript errors without importing a non-existent package.
+
+// Enhanced NFC API types
 declare global {
   interface Window {
     NDEFReader?: {
-      new (): {
-        write: (data: unknown) => Promise<void>
-      }
+      new (): NDEFReader
     }
+  }
+  
+  interface NDEFReader {
+    write(message: NDEFMessage): Promise<void>
+    scan(options?: NDEFScanOptions): Promise<void>
+    onreading: ((event: NDEFReadingEvent) => void) | null
+    onreadingerror: ((event: Event) => void) | null
+  }
+
+  interface NDEFMessage {
+    records: NDEFRecord[]
+  }
+
+  interface NDEFRecord {
+    recordType: string
+    data?: string | ArrayBuffer | DataView
+    mediaType?: string
+    id?: string
+  }
+
+  interface NDEFScanOptions {
+    signal?: AbortSignal
+  }
+
+  interface NDEFReadingEvent {
+    serialNumber: string
+    message: NDEFMessage
   }
 }
 
@@ -59,17 +84,30 @@ export default function SharePage() {
   const [shareUrl, setShareUrl] = useState<string>("")
   const [copied, setCopied] = useState(false)
   const [nfcSupported, setNfcSupported] = useState(false)
+  const [nfcWriting, setNfcWriting] = useState(false)
 
   useEffect(() => {
-    // Load profiles from localStorage
-    const savedProfiles = localStorage.getItem("norel-profiles")
-    if (savedProfiles) {
-      const parsedProfiles = JSON.parse(savedProfiles)
-      setProfiles(parsedProfiles)
-      if (parsedProfiles.length > 0) {
-        setSelectedProfile(parsedProfiles[0].id)
+    const fetchProfiles = async () => {
+      try {
+        const res = await fetch('/api/profiles');
+        if (!res.ok) {
+          throw new Error('Failed to fetch profiles');
+        }
+        const data = await res.json();
+        setProfiles(data);
+        if (data.length > 0) {
+          setSelectedProfile(data[0].id);
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load profiles. Please try again.",
+          variant: "destructive",
+        });
       }
-    }
+    };
+
+    fetchProfiles();
 
     // Check NFC support
     if ("NDEFReader" in window) {
@@ -161,22 +199,59 @@ export default function SharePage() {
       return
     }
 
-    try {
-      const ndef = new window.NDEFReader!()
-      await ndef.write({
-        records: [{ recordType: "url", data: shareUrl }],
-      })
-
+    if (!shareUrl) {
       toast({
-        title: "NFC Ready",
-        description: "Profile data written to NFC. Tap your device to share.",
-      })
-    } catch (error) {
-      toast({
-        title: "NFC Error",
-        description: "Failed to write NFC data",
+        title: "No Profile Selected",
+        description: "Please select a profile first",
         variant: "destructive",
       })
+      return
+    }
+
+    setNfcWriting(true)
+
+    try {
+      const ndef = new window.NDEFReader!()
+      
+      // Create proper NDEF message structure
+      const message: NDEFMessage = {
+        records: [
+          {
+            recordType: "url",
+            data: shareUrl
+          }
+        ]
+      }
+
+      await ndef.write(message)
+
+      toast({
+        title: "NFC Write Successful",
+        description: "Profile data written to NFC tag. Ready to share!",
+      })
+    } catch (error) {
+      console.error('NFC Write Error:', error)
+      
+      let errorMessage = "Failed to write NFC data"
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = "NFC permission denied. Please allow NFC access in your browser settings."
+        } else if (error.name === 'NotSupportedError') {
+          errorMessage = "NFC writing is not supported on this device."
+        } else if (error.name === 'InvalidStateError') {
+          errorMessage = "NFC is not available. Please ensure NFC is enabled in your device settings."
+        } else if (error.name === 'NetworkError') {
+          errorMessage = "No NFC tag found. Please bring an NFC tag close to your device and try again."
+        }
+      }
+      
+      toast({
+        title: "NFC Write Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setNfcWriting(false)
     }
   }
 
@@ -187,6 +262,7 @@ export default function SharePage() {
         const shareData = {
           ...profile,
           timestamp: Date.now(),
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
         }
         const encodedData = btoa(JSON.stringify(shareData))
         const url = `${window.location.origin}/kiosk?data=${encodedData}`
@@ -357,10 +433,19 @@ export default function SharePage() {
                     onClick={handleNFCShare}
                     className="w-full justify-start bg-transparent"
                     variant="outline"
-                    disabled={!nfcSupported}
+                    disabled={!nfcSupported || nfcWriting}
                   >
-                    <Smartphone className="w-4 h-4 mr-2" />
-                    {nfcSupported ? "Write to NFC" : "NFC Not Supported"}
+                    {nfcWriting ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Smartphone className="w-4 h-4 mr-2" />
+                    )}
+                    {nfcWriting 
+                      ? "Writing to NFC..." 
+                      : nfcSupported 
+                        ? "Write to NFC" 
+                        : "NFC Not Supported"
+                    }
                   </Button>
 
                   <Button onClick={generateNewUrl} className="w-full justify-start bg-transparent" variant="outline">
@@ -422,6 +507,15 @@ export default function SharePage() {
                     </div>
                     <p>Your information will be automatically filled into the form</p>
                   </div>
+                  
+                  {nfcSupported && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs text-blue-800">
+                        <strong>NFC Instructions:</strong> When writing to NFC, bring an NFC tag within 4cm of your device. 
+                        The write process may take a few seconds.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

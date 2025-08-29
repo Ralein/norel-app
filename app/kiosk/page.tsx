@@ -90,7 +90,7 @@ export default function KioskPage() {
 
   useEffect(() => {
     // Check for shared profile data in URL
-    const data = searchParams.get("data")
+    const data = searchParams?.get("data")
     if (data) {
       try {
         const decodedData = atob(data)
