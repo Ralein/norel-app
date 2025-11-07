@@ -29,9 +29,13 @@ export function Navigation() {
   const pathname = usePathname()
   const [hasNotifications, setHasNotifications] = useState(true)
 
+  if (pathname === '/') {
+    return null;
+  }
+
   const mainNavItems = [
     {
-      href: "/",
+      href: "/dashboard",
       label: "Dashboard",
       icon: Home,
       description: "Overview and stats",
