@@ -7,7 +7,11 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { Settings, Shield, Bell, Download, Trash2, Save } from "lucide-react"
+import { Settings, Shield, Bell, Download, Trash2, Save, User, LogOut } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
+import { auth } from "@/lib/firebase"
+import { signOut } from "firebase/auth"
+import { useRouter } from "next/navigation"
 
 interface AppSettings {
   notifications: boolean
@@ -20,6 +24,9 @@ interface AppSettings {
 
 export default function SettingsPage() {
   const { toast } = useToast()
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+
   const [settings, setSettings] = useState<AppSettings>({
     notifications: true,
     autoFill: true,
@@ -98,6 +105,11 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -114,6 +126,42 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-8">
+            {/* Account Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Account
+                </CardTitle>
+                <CardDescription>Manage your NOREL account</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {authLoading ? (
+                  <p>Loading account details...</p>
+                ) : user ? (
+                  <>
+                    <p>
+                      <strong>Email:</strong> {user.email}
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button asChild variant="outline">
+                        <Link href="/profile">
+                          <User className="w-4 h-4 mr-2" />
+                          View Profile
+                        </Link>
+                      </Button>
+                      <Button onClick={handleLogout} variant="outline">
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Logout
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p>Not logged in.</p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Privacy & Security */}
             <Card>
               <CardHeader>

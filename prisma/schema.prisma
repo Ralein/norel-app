@@ -12,6 +12,7 @@ datasource db {
 
 model Profile {
   id                        String    @id @default(cuid())
+  uid                       String    @unique
   firstName                 String
   middleName                String?
   lastName                  String

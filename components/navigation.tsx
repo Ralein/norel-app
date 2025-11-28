@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Home,
   User,
@@ -22,12 +22,54 @@ import {
   Shield,
   Plus,
   Sparkles,
+  LogOut
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { auth } from "@/lib/firebase"
+import { signOut } from "firebase/auth"
+
+function UserNav() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/');
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <Avatar className="w-8 h-8">
+          <AvatarImage src={user.photoURL || ''} />
+          <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <User className="w-4 h-4 mr-2" />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 
 export function Navigation() {
   const pathname = usePathname()
-  const [hasNotifications, setHasNotifications] = useState(true)
 
   if (pathname === '/') {
     return null;
@@ -243,6 +285,7 @@ export function Navigation() {
           {/* Right side actions */}
           <div className="flex items-center gap-2">
             <ModeToggle />
+            <UserNav />
 
             {/* Quick Access Dropdown */}
             <DropdownMenu>

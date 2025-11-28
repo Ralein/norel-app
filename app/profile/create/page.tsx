@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Save, User, CreditCard, Briefcase, GraduationCap, Heart, Users, Globe } from "lucide-react"
 import Link from "next/link"
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 interface ProfileFormData {
   // Personal Information
@@ -203,6 +205,8 @@ export default function CreateProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fileData, setFileData] = useState<FileData>({ governmentIdFile: null, photoFile: null, signatureFile: null });
 
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -405,6 +409,19 @@ export default function CreateProfilePage() {
     setIsLoading(true);
 
     try {
+      if (password !== confirmPassword) {
+        toast({
+          title: "Passwords do not match",
+          description: "Please make sure your passwords match.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, password);
+      const user = userCredential.user;
+
       // Validate required fields
       const requiredFields = [
         "firstName",
@@ -438,6 +455,7 @@ export default function CreateProfilePage() {
           formDataToSend.append(key, value.toString());
         }
       });
+      formDataToSend.append("uid", user.uid);
 
       Object.entries(fileData).forEach(([key, value]) => {
         if (value) {
@@ -459,19 +477,43 @@ export default function CreateProfilePage() {
         });
       } else if (!res.ok) {
         throw new Error('Failed to create profile');
-      } else {
+      }
+      else {
         toast({
           title: "Profile Created",
           description: "Your identity profile has been saved successfully.",
         });
-        router.push("/");
+        router.push("/dashboard");
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create profile. Please try again.",
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error !== null && 'code' in error && typeof (error as any).code === 'string') {
+        const firebaseError = error as any;
+        if (firebaseError.code === 'auth/email-already-in-use') {
+          toast({
+            title: "Email Already in Use",
+            description: "This email address is already associated with an account.",
+            variant: "destructive",
+          });
+        } else if (firebaseError.code === 'auth/weak-password') {
+          toast({
+            title: "Weak Password",
+            description: "Password should be at least 6 characters.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: `Failed to create profile: ${firebaseError.message || "An unknown error occurred."}`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create profile. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -585,6 +627,31 @@ export default function CreateProfilePage() {
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="john@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
                     required
                   />
                 </div>

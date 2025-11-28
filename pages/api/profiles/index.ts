@@ -62,8 +62,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { fields, files } = await parseForm(req);
         const profileData = getProfileData(fields, files);
         
+        if (!profileData.uid) {
+          return res.status(400).json({ message: 'Missing uid' });
+        }
+
         const profile = await prisma.profile.create({
           data: {
+            uid: String(profileData.uid),
             firstName: String(profileData.firstName),
             middleName: profileData.middleName ? String(profileData.middleName) : null,
             lastName: String(profileData.lastName),
