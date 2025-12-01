@@ -81,11 +81,38 @@ model Profile {
   shares                    ShareHistory[]
 }
 
+
+
 model ShareHistory {
+
   id          String   @id @default(cuid())
+
   profileId   String
+
   profile     Profile  @relation(fields: [profileId], references: [id])
+
   timestamp   DateTime @default(now())
+
   formType    String
+
   location    String
+
+}
+
+
+
+model Form {
+
+  id          String   @id @default(cuid())
+
+  title       String
+
+  description String?
+
+  fields      Json
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+
 }
