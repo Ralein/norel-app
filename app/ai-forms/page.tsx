@@ -90,7 +90,7 @@ export default function AIFormsPage() {
       console.error(error);
       toast({
         title: "Generation Failed",
-        description: "Failed to generate form. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate form. Please try again.",
         variant: "destructive",
       })
     } finally {

@@ -23,7 +23,7 @@ export async function generateForm(prompt: string, formType: string, industry: s
                       label: string;
                       placeholder?: string;
                       required: boolean;
-                      validation?: string; // 'email' | 'phone' | 'ssn' | undefined
+                      validation?: string | null; // 'email' | 'phone' | 'ssn' | null
                       description?: string;
                     }
                     
@@ -37,6 +37,7 @@ export async function generateForm(prompt: string, formType: string, industry: s
                     }
                     
                     Return ONLY the JSON object. Do not include markdown formatting or backticks.
+                    IMPORTANT: Do NOT use the value 'undefined'. Use 'null' or omit the field entirely. JSON does not support 'undefined'.
                     `
                 },
                 {
@@ -48,7 +49,7 @@ export async function generateForm(prompt: string, formType: string, industry: s
                     Generate the JSON.`
                 }
             ],
-            model: "llama3-70b-8192",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.5,
             max_tokens: 4096,
             top_p: 1,
@@ -65,6 +66,9 @@ export async function generateForm(prompt: string, formType: string, industry: s
 
     } catch (error) {
         console.error("Error generating form:", error);
-        throw new Error("Failed to generate form");
+        if (error instanceof Error) {
+            throw new Error(error.message);
+        }
+        throw new Error("Failed to generate form: Unknown error");
     }
 }
