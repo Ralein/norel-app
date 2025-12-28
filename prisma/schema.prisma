@@ -34,7 +34,7 @@ model Profile {
   currentZip                String?
   primaryPhone              String
   alternatePhone            String?
-  email                     String    @unique
+  email                     String
   communicationPreference   String?
   panNumber                 String?
   aadhaarNumber             String?
