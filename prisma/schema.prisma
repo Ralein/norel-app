@@ -78,6 +78,7 @@ model Profile {
   additionalNotes           String?
 
   createdAt                 DateTime  @default(now())
+  isBanned                  Boolean   @default(false)
   shares                    ShareHistory[]
 }
 

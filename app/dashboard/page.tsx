@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +32,7 @@ interface ShareHistory {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [shareHistory, setShareHistory] = useState<ShareHistory[]>([]);
 
@@ -46,6 +48,13 @@ export default function DashboardPage() {
           throw new Error('Failed to fetch profiles');
         }
         const profilesData = await profilesRes.json();
+
+        // Check if any profile is banned
+        if (profilesData.some((p: any) => p.isBanned)) {
+          router.push("/banned");
+          return;
+        }
+
         setProfiles(profilesData);
 
         if (!shareHistoryRes.ok) {
@@ -59,7 +68,7 @@ export default function DashboardPage() {
     };
 
     fetchProfilesAndShareHistory();
-  }, []);
+  }, [router]);
 
   const stats = {
     totalProfiles: profiles.length,
