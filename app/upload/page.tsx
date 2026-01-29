@@ -25,6 +25,8 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react"
+import { autoFillForm } from "../actions/auto-fill-form"
+import type { GeneratedForm } from "../ai-forms/types"
 
 interface UploadedFile {
   id: string
@@ -38,18 +40,6 @@ interface UploadedFile {
   aiProcessed?: boolean
 }
 
-interface AIExtractedData {
-  formType: string
-  confidence: number
-  fields: {
-    [key: string]: {
-      value: string
-      confidence: number
-      position?: { x: number; y: number; width: number; height: number }
-    }
-  }
-  suggestions: string[]
-}
 
 export default function UploadPage() {
   const { toast } = useToast()
@@ -60,7 +50,7 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState<string>("auto-detect")
   const [aiProcessing, setAiProcessing] = useState<string[]>([])
-  const [extractedData, setExtractedData] = useState<{ [fileId: string]: AIExtractedData }>({})
+  const [extractedData, setExtractedData] = useState<{ [fileId: string]: GeneratedForm }>({})
 
   const categories = [
     { value: "auto-detect", label: "Auto-detect", icon: Brain },
@@ -108,12 +98,10 @@ export default function UploadPage() {
       // Validate file type
       const allowedTypes = [
         "application/pdf",
-        "image/jpeg",
-        "image/png",
-        "image/gif",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "text/plain",
+        "application/json",
       ]
 
       if (!allowedTypes.includes(file.type)) {
@@ -176,39 +164,33 @@ export default function UploadPage() {
     setAiProcessing((prev) => [...prev, fileId])
 
     try {
-      // Simulate AI processing delay
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      const formData = new FormData()
+      formData.append("file", file)
 
-      // Mock AI extraction results
-      const mockExtractedData: AIExtractedData = {
-        formType: detectFormType(file.name),
-        confidence: 0.85 + Math.random() * 0.1,
-        fields: generateMockFields(file.name),
-        suggestions: [
-          "Consider verifying the extracted phone number format",
-          "Date format appears to be DD/MM/YYYY",
-          "Some text may be partially obscured - manual review recommended",
-        ],
+      const result = await autoFillForm(formData)
+
+      if (result.success && result.form) {
+        setExtractedData((prev) => ({
+          ...prev,
+          [fileId]: result.form as GeneratedForm,
+        }))
+
+        // Update file with AI processing complete
+        setUploadedFiles((prev) =>
+          prev.map((f) => (f.id === fileId ? { ...f, aiProcessed: true, category: result.form!.category } : f)),
+        )
+
+        toast({
+          title: "AI Processing Complete",
+          description: `Data extracted and profile-matched for ${file.name}.`,
+        })
+      } else {
+        throw new Error(result.error || "Failed to process form")
       }
-
-      setExtractedData((prev) => ({
-        ...prev,
-        [fileId]: mockExtractedData,
-      }))
-
-      // Update file with AI processing complete
-      setUploadedFiles((prev) =>
-        prev.map((f) => (f.id === fileId ? { ...f, aiProcessed: true, category: mockExtractedData.formType } : f)),
-      )
-
-      toast({
-        title: "AI Processing Complete",
-        description: `Data extracted from ${file.name} with ${Math.round(mockExtractedData.confidence * 100)}% confidence.`,
-      })
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "AI Processing Failed",
-        description: `Failed to process ${file.name}. You can still view and manage the file manually.`,
+        description: error.message || `Failed to process ${file.name}. You can still view and manage the file manually.`,
         variant: "destructive",
       })
     } finally {
@@ -225,36 +207,6 @@ export default function UploadPage() {
     return "other"
   }
 
-  const generateMockFields = (filename: string): AIExtractedData["fields"] => {
-    const baseFields = {
-      "Full Name": { value: "John Michael Doe", confidence: 0.92 },
-      "Date of Birth": { value: "15/03/1990", confidence: 0.88 },
-      Email: { value: "john.doe@email.com", confidence: 0.95 },
-      Phone: { value: "+1 (555) 123-4567", confidence: 0.87 },
-    }
-
-    const name = filename.toLowerCase()
-    if (name.includes("passport")) {
-      return {
-        ...baseFields,
-        "Passport Number": { value: "A1234567", confidence: 0.91 },
-        Nationality: { value: "United States", confidence: 0.96 },
-        "Issue Date": { value: "01/01/2020", confidence: 0.89 },
-        "Expiry Date": { value: "01/01/2030", confidence: 0.89 },
-      }
-    }
-
-    if (name.includes("bank")) {
-      return {
-        ...baseFields,
-        "Account Number": { value: "****1234", confidence: 0.93 },
-        "Bank Name": { value: "First National Bank", confidence: 0.97 },
-        Balance: { value: "$5,432.10", confidence: 0.85 },
-      }
-    }
-
-    return baseFields
-  }
 
   const removeFile = (fileId: string) => {
     setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId))
@@ -277,7 +229,8 @@ export default function UploadPage() {
 
     const exportData = {
       fileName: file.name,
-      formType: data.formType,
+      formName: data.name,
+      category: data.category,
       confidence: data.confidence,
       extractedFields: data.fields,
       suggestions: data.suggestions,
@@ -309,7 +262,6 @@ export default function UploadPage() {
   }
 
   const getFileIcon = (type: string) => {
-    if (type.startsWith("image/")) return ImageIcon
     if (type === "application/pdf") return FileText
     return File
   }
@@ -378,14 +330,13 @@ export default function UploadPage() {
                     Upload Documents
                   </CardTitle>
                   <CardDescription>
-                    Drag and drop files or click to browse. Supports PDF, images, and documents up to 10MB.
+                    Drag and drop documents or click to browse. Supports PDF, DOCX, TXT, and JSON up to 10MB.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
-                    }`}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                      }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
@@ -393,7 +344,7 @@ export default function UploadPage() {
                   >
                     <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2">Drop files here or click to upload</h3>
-                    <p className="text-muted-foreground mb-4">PDF, JPG, PNG, DOC, DOCX, TXT files up to 10MB each</p>
+                    <p className="text-muted-foreground mb-4">PDF, DOCX, TXT, JSON files up to 10MB each</p>
                     <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                       {uploading ? (
                         <>
@@ -411,7 +362,7 @@ export default function UploadPage() {
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.txt"
+                      accept=".pdf,.doc,.docx,.txt,.json"
                       onChange={handleFileInput}
                       className="hidden"
                     />
@@ -494,30 +445,27 @@ export default function UploadPage() {
                               <div className="mt-4 p-4 bg-muted/50 rounded-lg">
                                 <div className="flex items-center gap-2 mb-3">
                                   <Sparkles className="w-4 h-4 text-primary" />
-                                  <h5 className="font-medium">AI Extracted Data</h5>
+                                  <h5 className="font-medium">AI Profile-Matched Data</h5>
                                   <Badge variant="secondary">
                                     {Math.round(extractedData[file.id].confidence * 100)}% confidence
                                   </Badge>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                  {Object.entries(extractedData[file.id].fields).map(([key, field]) => (
-                                    <div key={key} className="space-y-1">
-                                      <Label className="text-xs font-medium text-muted-foreground">{key}</Label>
+                                  {extractedData[file.id].fields.map((field) => (
+                                    <div key={field.id} className="space-y-1">
+                                      <Label className="text-xs font-medium text-muted-foreground">{field.label}</Label>
                                       <div className="flex items-center gap-2">
-                                        <Input value={field.value} readOnly className="text-sm" />
-                                        <Badge
-                                          variant={field.confidence > 0.9 ? "default" : "secondary"}
-                                          className="text-xs"
-                                        >
-                                          {Math.round(field.confidence * 100)}%
+                                        <Input value={(field as any).value || ""} readOnly className="text-sm" />
+                                        <Badge variant="outline" className="text-[10px] h-4">
+                                          {field.type}
                                         </Badge>
                                       </div>
                                     </div>
                                   ))}
                                 </div>
 
-                                {extractedData[file.id].suggestions.length > 0 && (
+                                {extractedData[file.id].suggestions && extractedData[file.id].suggestions.length > 0 && (
                                   <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                       <AlertCircle className="w-4 h-4 text-orange-500" />
@@ -631,16 +579,12 @@ export default function UploadPage() {
                       <span>PDF Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" />
-                      <span>Images (JPG, PNG, GIF)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
                       <File className="w-4 h-4" />
                       <span>Word Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <File className="w-4 h-4" />
-                      <span>Text Files</span>
+                      <span>Text & JSON Files</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-4">Maximum file size: 10MB per file</p>

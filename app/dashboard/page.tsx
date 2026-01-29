@@ -135,8 +135,8 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Link href="/profile/create">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Link href="/profile/create" className="flex">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer flex-1 flex flex-col justify-center min-h-[220px]">
               <CardHeader className="text-center">
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <Plus className="w-6 h-6 text-primary" />
@@ -147,8 +147,8 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/share">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Link href="/share" className="flex">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer flex-1 flex flex-col justify-center min-h-[220px]">
               <CardHeader className="text-center">
                 <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <Share2 className="w-6 h-6 text-blue-500" />
@@ -159,8 +159,8 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/kiosk">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Link href="/kiosk" className="flex">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer flex-1 flex flex-col justify-center min-h-[220px]">
               <CardHeader className="text-center">
                 <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <Monitor className="w-6 h-6 text-green-500" />
@@ -171,8 +171,8 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/documents">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Link href="/documents" className="flex">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer flex-1 flex flex-col justify-center min-h-[220px]">
               <CardHeader className="text-center">
                 <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <FileText className="w-6 h-6 text-orange-500" />
